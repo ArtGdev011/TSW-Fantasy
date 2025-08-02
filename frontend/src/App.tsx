@@ -1,12 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContextFirebase';
 import AuthModal from './components/AuthModal';
 import Dashboard from './components/Dashboard';
 import EnhancedCreateTeamPage from './components/EnhancedCreateTeamPage';
 import TeamPage from './components/TeamPage';
 import Navbar from './components/Navbar';
+import LoginFirebase from './pages/LoginFirebase';
+import RegisterFirebase from './pages/RegisterFirebase';
 import './App.css';
 
 // Main App component with auth logic
@@ -42,6 +44,8 @@ const AppContent: React.FC = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/team" element={<TeamPage />} />
             <Route path="/create-team" element={<EnhancedCreateTeamPage />} />
+            <Route path="/login-firebase" element={<LoginFirebase />} />
+            <Route path="/register-firebase" element={<RegisterFirebase />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Router>

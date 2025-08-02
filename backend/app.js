@@ -26,7 +26,7 @@ import('./config/firebase.js').then(firebase => {
 });
 
 // Import routes
-const authRoutes = require('./routes/auth');
+const authRoutes = require('./routes/auth_firebase'); // Use Firebase auth
 const teamRoutes = require('./routes/team');
 const playerRoutes = require('./routes/player');
 const chipsRoutes = require('./routes/chips');
