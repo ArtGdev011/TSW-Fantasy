@@ -1,5 +1,5 @@
 /**
- * TSW Fantasy League Backend API
+ * TSW Fantasy League Backend API - Firebase Edition
  * 
  * A comprehensive fantasy sports backend with:
  * - User authentication and team management
@@ -8,17 +8,22 @@
  * - Inbox notifications and support tickets
  * - Real-time game lock management
  * 
- * Built for security, scalability, and competitive balance.
+ * Now powered by Firebase Firestore for better scalability and performance.
  */
 
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+
+// Import Firebase configuration
+import('./config/firebase.js').then(firebase => {
+  console.log('🔥 Firebase initialized successfully');
+}).catch(error => {
+  console.error('❌ Firebase initialization failed:', error);
+});
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -29,17 +34,16 @@ const inboxRoutes = require('./routes/inbox');
 const ticketRoutes = require('./routes/ticket');
 
 // Import utilities
-const { seedPlayers } = require('./utils/seedPlayers');
+const { seedPlayersFirebase } = require('./utils/seedPlayersFirebase');
 const { getCurrentGameweek } = require('./utils/gameLock');
 const { getLeaderboard } = require('./utils/scoring');
-const { authenticateToken } = require('./middleware/auth');
+const { authenticateSession } = require('./middleware/auth');
 
 // Initialize Express app
 const app = express();
 
 // Environment variables with safe fallbacks
 const PORT = process.env.PORT || 4000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tsw-fantasy-league';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const MAX_REQUESTS_PER_MINUTE = parseInt(process.env.MAX_REQUESTS_PER_MINUTE) || 100;
 

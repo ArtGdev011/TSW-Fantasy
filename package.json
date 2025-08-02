@@ -11,5 +11,8 @@
     "start": "cd frontend && npm start",
     "build": "cd frontend && npm run build",
     "dev": "cd frontend && npm start"
+  },
+  "dependencies": {
+    "mongodb": "^6.18.0"
   }
 }
