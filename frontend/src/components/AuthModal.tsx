@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextFirebase';
 import { XMarkIcon, ShieldCheckIcon, ClockIcon, TrophyIcon } from '@heroicons/react/24/outline';
 
 interface AuthModalProps {
@@ -57,7 +57,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           setIsLoading(false);
           return;
         }
-        success = await signup(formData.username, formData.password, formData.email, formData.firstName, formData.lastName);
+        success = await signup(formData.username, formData.password, formData.email || undefined);
       }
 
       if (success) {
