@@ -1,0 +1,50 @@
+// Firebase Storage Security Rules for TSW Fantasy League
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // User profile images - users can only access their own images
+    match /users/{userId}/profile/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Team logos - users can upload/modify their team logos
+    match /teams/{teamId}/logo/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        isTeamOwner(teamId);
+    }
+    
+    // Player images - only admins can modify, everyone can read
+    match /players/{playerId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && hasAdminRole();
+    }
+    
+    // General assets - read-only for authenticated users
+    match /assets/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && hasAdminRole();
+    }
+    
+    // Helper functions
+    function isTeamOwner(teamId) {
+      return request.auth != null && 
+             firestore.get(/databases/(default)/documents/teams/$(teamId)).data.userId == request.auth.uid;
+    }
+    
+    function hasAdminRole() {
+      return request.auth != null && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // File validation functions
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidImageSize() {
+      return request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+  }
+}
