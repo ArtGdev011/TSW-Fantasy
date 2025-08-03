@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContextFirebase';
+import { loginWithUsername } from '../services/authService';
 import { User, Lock } from 'lucide-react';
 import './Auth.css';
 
@@ -12,7 +12,6 @@ const Login: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,14 +45,30 @@ const Login: React.FC = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    
     try {
-      const success = await login(formData.username, formData.password);
+      // ✅ Using proper authService following best practices
+      const result = await loginWithUsername(formData.username, formData.password);
       
-      if (success) {
-        navigate('/dashboard');
+      console.log("✅ Login successful:", result);
+      navigate('/dashboard');
+      
+    } catch (error: any) {
+      console.error("❌ Login error:", error);
+      
+      // Handle specific Firebase errors
+      let errorMessage = "Login failed. Please check your credentials.";
+      
+      if (error.code === 'auth/user-not-found' || error.message.includes('Username not found')) {
+        errorMessage = "Username not found. Please check your username.";
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect password. Please try again.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many failed attempts. Please try again later.";
       }
-    } catch (error) {
-      console.error('Login error:', error);
+      
+      setErrors({ general: errorMessage });
+      
     } finally {
       setIsLoading(false);
     }
@@ -69,6 +84,12 @@ const Login: React.FC = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
+            {errors.general && (
+              <div className="error-banner">
+                {errors.general}
+              </div>
+            )}
+            
             <div className="form-group">
               <label htmlFor="username">Username</label>
               <div className="input-wrapper">

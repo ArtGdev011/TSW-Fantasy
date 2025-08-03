@@ -9,6 +9,8 @@ import TeamPage from './components/TeamPage';
 import Navbar from './components/Navbar';
 import LoginFirebase from './pages/LoginFirebase';
 import RegisterFirebase from './pages/RegisterFirebase';
+import Login from './pages/Login';
+import FirebaseAuthTest from './components/FirebaseAuthTest';
 import './App.css';
 
 // Main App component with auth logic
@@ -46,6 +48,8 @@ const AppContent: React.FC = () => {
             <Route path="/create-team" element={<EnhancedCreateTeamPage />} />
             <Route path="/login-firebase" element={<LoginFirebase />} />
             <Route path="/register-firebase" element={<RegisterFirebase />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/auth-test" element={<FirebaseAuthTest />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Router>
