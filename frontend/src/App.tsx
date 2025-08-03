@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContextFirebase';
@@ -13,9 +13,38 @@ import Login from './pages/Login';
 import FirebaseAuthTest from './components/FirebaseAuthTest';
 import './App.css';
 
+// 🔍 Extend Window interface for debug info
+declare global {
+  interface Window {
+    tswDebugInfo: any;
+    tswTest: any;
+    tswDebug: any;
+  }
+}
+
 // Main App component with auth logic
 const AppContent: React.FC = () => {
   const { isAuthenticated, loading, showAuthModal, setShowAuthModal } = useAuth();
+
+  // 🔍 Initialize Debug Logger on App Start
+  useEffect(() => {
+    console.log("%c🚀 TSW Fantasy League - Debug Mode Enabled", "color: #00ff00; font-size: 18px; font-weight: bold;");
+    console.log("%c📊 Open Developer Tools to see detailed auth debugging", "color: #3b82f6; font-weight: bold;");
+    console.log("%c🧪 Use window.tswTest commands for manual testing", "color: #8b5cf6; font-weight: bold;");
+    
+    // Add debug info to window
+    window.tswDebugInfo = {
+      appStarted: new Date().toISOString(),
+      version: "1.0.0",
+      environment: process.env.NODE_ENV,
+      firebase: {
+        projectId: "tsw-fantasy",
+        authDomain: "tsw-fantasy.firebaseapp.com"
+      }
+    };
+    
+    console.log("🔧 Debug info available at window.tswDebugInfo");
+  }, []);
 
   if (loading) {
     return (

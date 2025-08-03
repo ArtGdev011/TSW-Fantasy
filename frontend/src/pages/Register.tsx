@@ -4,6 +4,36 @@ import { useAuth } from '../contexts/AuthContextFirebase';
 import { User, Lock, Mail } from 'lucide-react';
 import './Auth.css';
 
+// 🔍 Debug Logger for Register Component
+const debugLog = {
+  success: (msg: string, data?: any) => {
+    console.log(`%c✅ REGISTER SUCCESS: ${msg}`, 'color: #10b981; font-weight: bold;');
+    if (data) console.log('📊 Data:', data);
+  },
+  error: (msg: string, error?: any) => {
+    console.error(`%c❌ REGISTER ERROR: ${msg}`, 'color: #ef4444; font-weight: bold;');
+    if (error) {
+      console.group('🔍 Error Details:');
+      console.error('  • Code:', error.code);
+      console.error('  • Message:', error.message);
+      console.error('  • Full Error:', error);
+      console.groupEnd();
+    }
+  },
+  info: (msg: string, data?: any) => {
+    console.log(`%c📝 REGISTER INFO: ${msg}`, 'color: #3b82f6; font-weight: bold;');
+    if (data) console.log('📊 Data:', data);
+  },
+  formData: (formData: any) => {
+    console.group('%c📝 Register Form Data', 'color: #8b5cf6; font-weight: bold;');
+    console.log('Username:', formData.username);
+    console.log('Email:', formData.email);
+    console.log('Password:', '*'.repeat(formData.password.length), `(${formData.password.length} characters)`);
+    console.log('Confirm Password:', '*'.repeat(formData.confirmPassword.length), `(${formData.confirmPassword.length} characters)`);
+    console.groupEnd();
+  }
+};
+
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     username: '',
@@ -60,11 +90,19 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    debugLog.info("🚀 Register form submitted");
     
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      debugLog.error("Form validation failed", errors);
+      return;
+    }
 
+    debugLog.formData(formData);
     setIsLoading(true);
+    
     try {
+      debugLog.info("🔐 Attempting registration with AuthContext");
+      
       const success = await signup(
         formData.username, 
         formData.password, 
@@ -72,12 +110,43 @@ const Register: React.FC = () => {
       );
       
       if (success) {
+        debugLog.success("Registration successful", { username: formData.username });
         navigate('/dashboard');
+      } else {
+        debugLog.error("Registration returned false (failed)");
       }
-    } catch (error) {
+      
+    } catch (error: any) {
+      debugLog.error("Registration failed", error);
       console.error('Registration error:', error);
+      
+      // Handle specific Firebase errors for user feedback
+      let errorMessage = "Registration failed. Please try again.";
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "Email is already registered. Try logging in instead.";
+        debugLog.error("Email already in use");
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Password is too weak. Please use at least 6 characters.";
+        debugLog.error("Weak password provided");
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email format. Please check your email.";
+        debugLog.error("Invalid email format");
+      } else if (error.code === 'permission-denied') {
+        errorMessage = "Database access denied. Please contact support.";
+        debugLog.error("Firestore permission denied");
+      } else if (error.message && error.message.includes('Username already exists')) {
+        errorMessage = "Username is already taken. Please choose a different one.";
+        debugLog.error("Username already exists");
+      } else {
+        debugLog.error("Unknown registration error", error);
+      }
+      
+      setErrors({ general: errorMessage });
+      
     } finally {
       setIsLoading(false);
+      debugLog.info("Registration attempt completed");
     }
   };
 

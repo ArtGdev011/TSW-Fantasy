@@ -4,6 +4,34 @@ import { loginWithUsername } from '../services/authService';
 import { User, Lock } from 'lucide-react';
 import './Auth.css';
 
+// 🔍 Debug Logger for Login Component
+const debugLog = {
+  success: (msg: string, data?: any) => {
+    console.log(`%c✅ LOGIN SUCCESS: ${msg}`, 'color: #10b981; font-weight: bold;');
+    if (data) console.log('📊 Data:', data);
+  },
+  error: (msg: string, error?: any) => {
+    console.error(`%c❌ LOGIN ERROR: ${msg}`, 'color: #ef4444; font-weight: bold;');
+    if (error) {
+      console.group('🔍 Error Details:');
+      console.error('  • Code:', error.code);
+      console.error('  • Message:', error.message);
+      console.error('  • Full Error:', error);
+      console.groupEnd();
+    }
+  },
+  info: (msg: string, data?: any) => {
+    console.log(`%c📝 LOGIN INFO: ${msg}`, 'color: #3b82f6; font-weight: bold;');
+    if (data) console.log('📊 Data:', data);
+  },
+  formData: (formData: any) => {
+    console.group('%c📝 Login Form Data', 'color: #8b5cf6; font-weight: bold;');
+    console.log('Username:', formData.username);
+    console.log('Password:', '*'.repeat(formData.password.length), `(${formData.password.length} characters)`);
+    console.groupEnd();
+  }
+};
+
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
     username: '',
@@ -41,19 +69,33 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    debugLog.info("🚀 Login form submitted");
     
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      debugLog.error("Form validation failed", errors);
+      return;
+    }
 
+    debugLog.formData(formData);
     setIsLoading(true);
     
     try {
+      debugLog.info("🔐 Attempting login with authService");
+      
       // ✅ Using proper authService following best practices
       const result = await loginWithUsername(formData.username, formData.password);
+      
+      debugLog.success("Login successful", {
+        uid: result.firebaseUser.uid,
+        email: result.firebaseUser.email,
+        username: result.userData.username
+      });
       
       console.log("✅ Login successful:", result);
       navigate('/dashboard');
       
     } catch (error: any) {
+      debugLog.error("Login failed", error);
       console.error("❌ Login error:", error);
       
       // Handle specific Firebase errors
@@ -61,16 +103,25 @@ const Login: React.FC = () => {
       
       if (error.code === 'auth/user-not-found' || error.message.includes('Username not found')) {
         errorMessage = "Username not found. Please check your username.";
+        debugLog.error("Username not found in database");
       } else if (error.code === 'auth/wrong-password') {
         errorMessage = "Incorrect password. Please try again.";
+        debugLog.error("Incorrect password provided");
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = "Too many failed attempts. Please try again later.";
+        debugLog.error("Rate limited due to too many failed attempts");
+      } else if (error.code === 'permission-denied') {
+        errorMessage = "Database access denied. Please contact support.";
+        debugLog.error("Firestore permission denied");
+      } else {
+        debugLog.error("Unknown login error", error);
       }
       
       setErrors({ general: errorMessage });
       
     } finally {
       setIsLoading(false);
+      debugLog.info("Login attempt completed");
     }
   };
 
