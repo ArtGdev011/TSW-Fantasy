@@ -86,7 +86,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       setCurrentProof(prev => (prev + 1) % socialProofMessages.length);
     }, 3000);
     return () => clearInterval(proofTimer);
-  }, []);
+  }, [socialProofMessages.length]);
 
   return (
     <AnimatePresence>

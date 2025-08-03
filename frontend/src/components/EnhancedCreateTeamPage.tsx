@@ -7,7 +7,7 @@ import BudgetBar from './BudgetBar';
 import CaptainSelector from './CaptainSelector';
 import FootballField from './FootballField';
 import toast from 'react-hot-toast';
-import { Shield, Users, Target, CheckCircle, Search, Filter } from 'lucide-react';
+import { Users, Target, CheckCircle, Search } from 'lucide-react';
 
 interface SelectedPlayers {
   gk: APIPlayer | null;

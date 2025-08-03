@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { teamAPI } from '../services/api';
-import toast from 'react-hot-toast';
 import { 
   Trophy, 
   Users, 
   Plus, 
-  BarChart3, 
   Calendar,
   TrendingUp,
   Crown,
-  Star,
   Target
 } from 'lucide-react';
 

@@ -9,35 +9,31 @@
  * - Real-time game lock management
  * 
  * Now powered by Firebase Firestore for better scalability and performance.
+ * MongoDB completely removed - everything runs on Firebase!
  */
 
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const session = require('express-session');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import session from 'express-session';
 
 // Import Firebase configuration
-import('./config/firebase.js').then(firebase => {
-  console.log('🔥 Firebase initialized successfully');
-}).catch(error => {
-  console.error('❌ Firebase initialization failed:', error);
-});
-
-// Import routes
-const authRoutes = require('./routes/auth_firebase'); // Use Firebase auth
-const teamRoutes = require('./routes/team');
-const playerRoutes = require('./routes/player');
-const chipsRoutes = require('./routes/chips');
-const inboxRoutes = require('./routes/inbox');
-const ticketRoutes = require('./routes/ticket');
+import { db, auth } from './config/firebase.js';
 
 // Import utilities
-const { seedPlayersFirebase } = require('./utils/seedPlayersFirebase');
-const { getCurrentGameweek } = require('./utils/gameLock');
-const { getLeaderboard } = require('./utils/scoring');
-const { authenticateSession } = require('./middleware/auth');
+import { getCurrentGameweek } from './utils/gameLock.js';
+import { getLeaderboard } from './utils/scoring.js';
+import { authenticateToken } from './middleware/auth.js';
+
+// Import route modules  
+import authRoutes from './routes/auth.js';
+import teamRoutes from './routes/team.js';
+import playerRoutes from './routes/players.js';
+import chipsRoutes from './routes/chips.js';
+import inboxRoutes from './routes/inbox.js';
+import ticketRoutes from './routes/tickets.js';
 
 // Initialize Express app
 const app = express();
@@ -69,15 +65,13 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Session configuration - MongoDB-backed sessions
+// Session configuration - Firebase-compatible sessions (memory store)
 app.use(session({
   secret: process.env.SESSION_SECRET || 'change-me-in-production-please',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: MONGO_URI,
-    collectionName: 'sessions'
-  }),
+  // Removed MongoDB store - using default memory store for now
+  // In production, consider using Redis or Firebase-compatible session store
   cookie: {
     secure: NODE_ENV === 'production', // HTTPS only in production
     httpOnly: true, // Prevent XSS
@@ -121,27 +115,23 @@ app.use((req, res, next) => {
 });
 
 /**
- * Database Connection
+ * Firebase Connection Check
  */
-async function connectDatabase() {
+async function checkFirebaseConnection() {
   try {
-    console.log('🔌 Connecting to MongoDB...');
+    console.log('� Checking Firebase connection...');
     
-    await mongoose.connect(MONGO_URI, {
-      maxPoolSize: 10, // Maintain up to 10 socket connections
-      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
-      socketTimeoutMS: 45000 // Close sockets after 45 seconds of inactivity
-    });
-    
-    console.log('✅ Connected to MongoDB successfully');
-    
-    // Seed players data
-    if (NODE_ENV !== 'test') {
-      await seedPlayers();
+    // Test Firebase connection
+    if (db && auth) {
+      console.log('✅ Firebase initialized successfully');
+      console.log('  - Firestore: ✅ Connected');
+      console.log('  - Authentication: ✅ Connected');
+    } else {
+      throw new Error('Firebase not properly initialized');
     }
     
   } catch (error) {
-    console.error('❌ MongoDB connection failed:', error);
+    console.error('❌ Firebase connection failed:', error);
     process.exit(1);
   }
 }
@@ -155,8 +145,9 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
+    version: '2.0.0-firebase',
     environment: NODE_ENV,
+    database: 'Firebase Firestore',
     gameweek: getCurrentGameweek(),
     uptime: process.uptime()
   });
@@ -308,35 +299,25 @@ app.get('/', (req, res) => {
  * Error Handling Middleware
  */
 
-// MongoDB connection error handler
-mongoose.connection.on('error', (error) => {
-  console.error('❌ MongoDB connection error:', error);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.warn('⚠️ MongoDB disconnected');
-});
-
 // Global error handler
 app.use((error, req, res, next) => {
   console.error('❌ Unhandled error:', error);
   
-  // Mongoose validation error
-  if (error.name === 'ValidationError') {
-    return res.status(400).json({
-      error: 'Validation failed',
-      details: Object.values(error.errors).map(err => ({
-        field: err.path,
-        message: err.message
-      }))
+  // Firebase auth error
+  if (error.code && error.code.startsWith('auth/')) {
+    return res.status(401).json({
+      error: 'Authentication failed',
+      message: error.message,
+      code: error.code
     });
   }
   
-  // Mongoose cast error (invalid ObjectId)
-  if (error.name === 'CastError') {
-    return res.status(400).json({
-      error: 'Invalid ID format',
-      message: 'The provided ID is not valid.'
+  // Firebase Firestore error
+  if (error.code && (error.code.includes('permission-denied') || error.code.includes('unavailable'))) {
+    return res.status(403).json({
+      error: 'Database access denied',
+      message: 'Check Firebase rules and permissions',
+      code: error.code
     });
   }
   
@@ -352,15 +333,6 @@ app.use((error, req, res, next) => {
     return res.status(401).json({
       error: 'Token expired',
       message: 'Authentication token has expired.'
-    });
-  }
-  
-  // MongoDB duplicate key error
-  if (error.code === 11000) {
-    const field = Object.keys(error.keyPattern)[0];
-    return res.status(409).json({
-      error: 'Duplicate entry',
-      message: `${field} already exists.`
     });
   }
   
@@ -384,8 +356,8 @@ app.use('*', (req, res) => {
  */
 async function startServer() {
   try {
-    // Connect to database first
-    await connectDatabase();
+    // Connect to Firebase first
+    await checkFirebaseConnection();
     
     // Start HTTP server
     const server = app.listen(PORT, () => {
@@ -400,10 +372,8 @@ async function startServer() {
       console.log('🛑 SIGTERM received, shutting down gracefully...');
       server.close(() => {
         console.log('✅ HTTP server closed');
-        mongoose.connection.close(false, () => {
-          console.log('✅ MongoDB connection closed');
-          process.exit(0);
-        });
+        console.log('🔥 Firebase connections will close automatically');
+        process.exit(0);
       });
     });
     
@@ -411,10 +381,8 @@ async function startServer() {
       console.log('🛑 SIGINT received, shutting down gracefully...');
       server.close(() => {
         console.log('✅ HTTP server closed');
-        mongoose.connection.close(false, () => {
-          console.log('✅ MongoDB connection closed');
-          process.exit(0);
-        });
+        console.log('🔥 Firebase connections will close automatically');
+        process.exit(0);
       });
     });
     

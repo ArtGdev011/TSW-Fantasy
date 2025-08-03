@@ -13,7 +13,7 @@ import './App.css';
 
 // Main App component with auth logic
 const AppContent: React.FC = () => {
-  const { isAuthenticated, loading, showAuthModal, setShowAuthModal, user } = useAuth();
+  const { isAuthenticated, loading, showAuthModal, setShowAuthModal } = useAuth();
 
   if (loading) {
     return (

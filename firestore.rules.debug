@@ -1,0 +1,12 @@
+// TEMPORARY DEBUG RULES - ALLOW ALL ACCESS
+// ⚠️ ONLY USE FOR DEVELOPMENT/DEBUGGING
+// Replace firestore.rules with this content temporarily to test connection
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

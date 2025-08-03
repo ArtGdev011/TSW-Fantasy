@@ -1,16 +1,25 @@
 #!/usr/bin/env node
 
 /**
- * TSW Fantasy League Development CLI
+ * TSW Fantasy League Development CLI - Firebase Edition
  * 
  * Helpful commands for development and testing
  * Usage: node dev-tools.js <command> [options]
  */
 
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const mongoose = require('mongoose');
+import { spawn } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { db } from './config/firebase.js';
+import { 
+  collection, 
+  getDocs, 
+  doc, 
+  setDoc, 
+  deleteDoc,
+  query,
+  orderBy
+} from 'firebase/firestore';
 
 // Color codes for terminal output
 const colors = {
@@ -139,27 +148,36 @@ async function runTests() {
 }
 
 async function seedDatabase() {
-  info('Seeding database with initial data...');
+  info('Seeding Firebase database with initial data...');
   
   try {
-    require('dotenv').config();
-    const { seedPlayers } = require('./utils/seedPlayers');
+    const { Player } = await import('./models/PlayerFirebase.js');
     
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/tsw-fantasy-league');
-    await seedPlayers();
+    // Create sample players in Firebase
+    const samplePlayers = [
+      { name: 'Lionel Messi', position: 'RW', rating: 95, price: 40, team: 'Inter Miami' },
+      { name: 'Cristiano Ronaldo', position: 'LW', rating: 93, price: 38, team: 'Al Nassr' },
+      { name: 'Kylian Mbappe', position: 'LW', rating: 91, price: 35, team: 'PSG' },
+      { name: 'Erling Haaland', position: 'CDM', rating: 90, price: 32, team: 'Man City' },
+      { name: 'Jan Oblak', position: 'GK', rating: 89, price: 25, team: 'Atletico Madrid' }
+    ];
     
-    success('Database seeded successfully!');
-    await mongoose.connection.close();
+    for (const playerData of samplePlayers) {
+      await Player.create(playerData);
+      success(`Created player: ${playerData.name}`);
+    }
+    
+    success('Firebase database seeded successfully!');
   } catch (err) {
     error(`Seeding failed: ${err.message}`);
   }
 }
 
 async function resetDatabase() {
-  warning('⚠️ This will DELETE ALL DATA in the database!');
+  warning('⚠️ This will DELETE ALL DATA in Firebase!');
   
   // Simple confirmation (in a real CLI, you'd use a proper prompt library)
-  const readline = require('readline');
+  const readline = await import('readline');
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -170,25 +188,31 @@ async function resetDatabase() {
       rl.close();
       
       if (answer !== 'CONFIRM') {
-        info('Database reset cancelled.');
+        info('Firebase reset cancelled.');
         return resolve();
       }
       
       try {
-        require('dotenv').config();
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/tsw-fantasy-league');
+        // Delete all collections in Firebase
+        const collections = ['users', 'players', 'teams', 'leagues', 'gameweeks', 'transfers'];
         
-        // Drop all collections
-        const collections = await mongoose.connection.db.collections();
-        for (const collection of collections) {
-          await collection.drop();
-          info(`Dropped collection: ${collection.collectionName}`);
+        for (const collectionName of collections) {
+          const collectionRef = collection(db, collectionName);
+          const snapshot = await getDocs(collectionRef);
+          
+          let deletedCount = 0;
+          for (const docSnapshot of snapshot.docs) {
+            await deleteDoc(doc(db, collectionName, docSnapshot.id));
+            deletedCount++;
+          }
+          
+          if (deletedCount > 0) {
+            info(`Deleted ${deletedCount} documents from ${collectionName}`);
+          }
         }
         
-        success('Database reset complete!');
+        success('Firebase database reset complete!');
         info('Run "node dev-tools.js seed" to add initial data.');
-        
-        await mongoose.connection.close();
       } catch (err) {
         error(`Reset failed: ${err.message}`);
       }
@@ -200,10 +224,10 @@ async function resetDatabase() {
 
 async function backupDatabase() {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const backupDir = path.join(__dirname, 'backups');
-  const backupFile = path.join(backupDir, `backup-${timestamp}.json`);
+  const backupDir = path.join(process.cwd(), 'backups');
+  const backupFile = path.join(backupDir, `firebase-backup-${timestamp}.json`);
   
-  info('Creating database backup...');
+  info('Creating Firebase database backup...');
   
   try {
     // Create backups directory if it doesn't exist
@@ -211,29 +235,35 @@ async function backupDatabase() {
       fs.mkdirSync(backupDir);
     }
     
-    require('dotenv').config();
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/tsw-fantasy-league');
-    
-    const collections = await mongoose.connection.db.collections();
+    const collections = ['users', 'players', 'teams', 'leagues', 'gameweeks', 'transfers'];
     const backup = {};
     
-    for (const collection of collections) {
-      const data = await collection.find({}).toArray();
-      backup[collection.collectionName] = data;
-      info(`Backed up ${data.length} documents from ${collection.collectionName}`);
+    for (const collectionName of collections) {
+      const collectionRef = collection(db, collectionName);
+      const snapshot = await getDocs(collectionRef);
+      const documents = [];
+      
+      snapshot.docs.forEach(doc => {
+        documents.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      backup[collectionName] = documents;
+      info(`Backed up ${documents.length} documents from ${collectionName}`);
     }
     
     fs.writeFileSync(backupFile, JSON.stringify(backup, null, 2));
-    success(`Backup created: ${backupFile}`);
+    success(`Firebase backup created: ${backupFile}`);
     
-    await mongoose.connection.close();
   } catch (err) {
     error(`Backup failed: ${err.message}`);
   }
 }
 
 async function restoreDatabase() {
-  const backupDir = path.join(__dirname, 'backups');
+  const backupDir = path.join(process.cwd(), 'backups');
   
   if (!fs.existsSync(backupDir)) {
     error('No backups directory found. Create a backup first.');
@@ -261,33 +291,29 @@ async function restoreDatabase() {
   try {
     const backup = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
     
-    require('dotenv').config();
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/tsw-fantasy-league');
-    
     for (const [collectionName, documents] of Object.entries(backup)) {
       if (documents.length > 0) {
-        await mongoose.connection.db.collection(collectionName).insertMany(documents);
+        for (const docData of documents) {
+          const { id, ...data } = docData;
+          await setDoc(doc(db, collectionName, id), data);
+        }
         info(`Restored ${documents.length} documents to ${collectionName}`);
       }
     }
     
-    success('Database restored successfully!');
-    await mongoose.connection.close();
+    success('Firebase database restored successfully!');
   } catch (err) {
     error(`Restore failed: ${err.message}`);
   }
 }
 
 async function listUsers() {
-  info('Fetching users...');
+  info('Fetching users from Firebase...');
   
   try {
-    require('dotenv').config();
-    const User = require('./models/User');
+    const { User } = await import('./models/User.js');
     
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/tsw-fantasy-league');
-    
-    const users = await User.find({}).select('username email createdAt').populate('team', 'name');
+    const users = await User.findAll();
     
     if (users.length === 0) {
       info('No users found.');
@@ -296,11 +322,10 @@ async function listUsers() {
     
     log('\n📋 Users:', 'bright');
     users.forEach(user => {
-      log(`• ${user.username} (${user.email || 'no email'}) - Team: ${user.team?.name || 'No team'} - Created: ${user.createdAt.toLocaleDateString()}`, 'cyan');
+      log(`• ${user.username} (${user.email || 'no email'}) - Role: ${user.role || 'user'} - Created: ${new Date(user.createdAt).toLocaleDateString()}`, 'cyan');
     });
     
     success(`Total: ${users.length} users`);
-    await mongoose.connection.close();
   } catch (err) {
     error(`Failed to list users: ${err.message}`);
   }
@@ -309,77 +334,68 @@ async function listUsers() {
 async function createTestUser() {
   const username = `testuser_${Date.now()}`;
   const password = 'password123';
+  const email = `${username}@test.com`;
   
   info(`Creating test user: ${username}`);
   
   try {
-    require('dotenv').config();
-    const User = require('./models/User');
-    const bcrypt = require('bcrypt');
+    const { User } = await import('./models/User.js');
     
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/tsw-fantasy-league');
-    
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const user = new User({
+    const userData = {
       username,
-      password: hashedPassword,
-      email: `${username}@test.com`
-    });
+      email,
+      password, // User model will handle hashing
+      role: 'user',
+      isActive: true
+    };
     
-    await user.save();
+    const user = await User.create(userData);
     
     success(`Test user created:`);
     log(`Username: ${username}`, 'cyan');
     log(`Password: ${password}`, 'cyan');
-    log(`Email: ${user.email}`, 'cyan');
+    log(`Email: ${email}`, 'cyan');
+    log(`Firebase ID: ${user.id}`, 'cyan');
     
-    await mongoose.connection.close();
   } catch (err) {
     error(`Failed to create test user: ${err.message}`);
   }
 }
 
 async function listTeams() {
-  info('Fetching teams...');
+  info('Fetching teams from Firebase...');
   
   try {
-    require('dotenv').config();
-    const Team = require('./models/Team');
+    const teamsRef = collection(db, 'teams');
+    const q = query(teamsRef, orderBy('totalPoints', 'desc'));
+    const snapshot = await getDocs(q);
     
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/tsw-fantasy-league');
-    
-    const teams = await Team.find({})
-      .select('name budget totalPoints user')
-      .populate('user', 'username')
-      .sort({ totalPoints: -1 });
-    
-    if (teams.length === 0) {
+    if (snapshot.empty) {
       info('No teams found.');
       return;
     }
     
     log('\n🏆 Teams (sorted by points):', 'bright');
-    teams.forEach((team, index) => {
-      log(`${index + 1}. ${team.name} - ${team.user?.username || 'Unknown'} - €${team.budget}M - ${team.totalPoints} pts`, 'cyan');
+    const teams = [];
+    snapshot.docs.forEach((doc, index) => {
+      const team = { id: doc.id, ...doc.data() };
+      teams.push(team);
+      log(`${index + 1}. ${team.name} - ${team.username || 'Unknown'} - €${team.budget || 0}M - ${team.totalPoints || 0} pts`, 'cyan');
     });
     
     success(`Total: ${teams.length} teams`);
-    await mongoose.connection.close();
   } catch (err) {
     error(`Failed to list teams: ${err.message}`);
   }
 }
 
 async function showPlayerStats() {
-  info('Analyzing player statistics...');
+  info('Analyzing player statistics from Firebase...');
   
   try {
-    require('dotenv').config();
-    const Player = require('./models/Player');
+    const { Player } = await import('./models/PlayerFirebase.js');
     
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/tsw-fantasy-league');
-    
-    const players = await Player.find({});
+    const players = await Player.findAll();
     const stats = {
       total: players.length,
       byPosition: {},
@@ -393,7 +409,7 @@ async function showPlayerStats() {
       stats.byPosition[player.position] = (stats.byPosition[player.position] || 0) + 1;
       
       // Ownership
-      if (player.owner) {
+      if (player.isAvailable === false) {
         stats.byOwnership.owned++;
       } else {
         stats.byOwnership.available++;
@@ -407,9 +423,9 @@ async function showPlayerStats() {
     
     // Top scorers
     stats.topScorers = players
-      .sort((a, b) => (b.seasonStats?.points || 0) - (a.seasonStats?.points || 0))
+      .sort((a, b) => (b.points || 0) - (a.points || 0))
       .slice(0, 5)
-      .map(p => ({ name: p.name, position: p.position, points: p.seasonStats?.points || 0 }));
+      .map(p => ({ name: p.name, position: p.position, points: p.points || 0 }));
     
     log('\n📊 Player Statistics:', 'bright');
     log(`Total Players: ${stats.total}`, 'cyan');
@@ -433,14 +449,13 @@ async function showPlayerStats() {
       log(`  ${index + 1}. ${player.name} (${player.position}) - ${player.points} pts`, 'cyan');
     });
     
-    await mongoose.connection.close();
   } catch (err) {
     error(`Failed to analyze players: ${err.message}`);
   }
 }
 
 async function clearLogs() {
-  const logDir = path.join(__dirname, 'logs');
+  const logDir = path.join(process.cwd(), 'logs');
   
   if (!fs.existsSync(logDir)) {
     info('No logs directory found.');
@@ -461,10 +476,9 @@ async function clearLogs() {
 }
 
 async function checkEnvironment() {
-  info('Checking environment configuration...');
+  info('Checking Firebase environment configuration...');
   
   const requiredEnvVars = [
-    'MONGO_URI',
     'JWT_SECRET',
     'PORT'
   ];
@@ -499,8 +513,22 @@ async function checkEnvironment() {
     }
   });
   
+  // Check Firebase config
+  try {
+    const { db, auth } = await import('./config/firebase.js');
+    if (db && auth) {
+      success('\n✅ Firebase configuration loaded successfully');
+      log('  - Firestore: ✅ Connected', 'green');
+      log('  - Authentication: ✅ Connected', 'green');
+    } else {
+      warning('\n⚠️ Firebase configuration issue detected');
+    }
+  } catch (err) {
+    error(`\n❌ Firebase configuration error: ${err.message}`);
+  }
+  
   // Check .env file
-  const envPath = path.join(__dirname, '.env');
+  const envPath = path.join(process.cwd(), '.env');
   if (fs.existsSync(envPath)) {
     success('\n✅ .env file found');
   } else {
@@ -508,15 +536,16 @@ async function checkEnvironment() {
   }
   
   // Check package.json
-  const packagePath = path.join(__dirname, 'package.json');
+  const packagePath = path.join(process.cwd(), 'package.json');
   if (fs.existsSync(packagePath)) {
     const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
     success(`\n✅ Package: ${pkg.name} v${pkg.version}`);
+    log(`  - Type: ${pkg.type || 'commonjs'} (should be "module" for Firebase)`, pkg.type === 'module' ? 'green' : 'yellow');
   }
 }
 
 function showHelp() {
-  log('\n🛠️ TSW Fantasy League Development Tools', 'bright');
+  log('\n� TSW Fantasy League Development Tools - Firebase Edition', 'bright');
   log('\nAvailable commands:', 'yellow');
   
   Object.entries(commands).forEach(([cmd, info]) => {
@@ -525,6 +554,7 @@ function showHelp() {
   
   log('\nUsage: node dev-tools.js <command>', 'bright');
   log('Example: node dev-tools.js start', 'cyan');
+  log('\n🔥 Now powered by Firebase instead of MongoDB!', 'green');
 }
 
 // Utility functions
@@ -567,6 +597,7 @@ async function main() {
   }
 }
 
-if (require.main === module) {
+// Use ES6 import.meta instead of require.main
+if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }

@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { clearTeamData, resetPlayerOwnership } from '../utils/teamUtils';
 
 const API_BASE_URL = 'http://localhost:4000/api';
 

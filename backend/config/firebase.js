@@ -1,7 +1,7 @@
 // Firebase Configuration for TSW Fantasy League Backend
-const { initializeApp, getApps } = require('firebase/app');
-const { getAuth } = require('firebase/auth');
-const { getFirestore } = require('firebase/firestore');
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, enableNetwork } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -26,11 +26,7 @@ if (getApps().length === 0) {
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-module.exports = {
-  app,
-  auth,
-  db
-};
+// Enable offline persistence and network
+export { app, auth, db };
 export const enableOnline = () => enableNetwork(db);
-
 export default app;

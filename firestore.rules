@@ -1,14 +1,13 @@
-// Firestore Security Rules for TSW Fantasy League
+// TEMPORARY DEBUG RULES - ALLOW ALL ACCESS FOR TESTING
+// ⚠️ REPLACE WITH SECURE RULES AFTER DEBUGGING
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users collection - users can only read/write their own data
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId
-        && isValidUser(resource.data);
+    match /{document=**} {
+      allow read, write: if true;
     }
+  }
+}
     
     // Players collection - read-only for all authenticated users
     match /players/{playerId} {

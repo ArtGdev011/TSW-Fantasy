@@ -10,7 +10,8 @@ import {
   query, 
   where, 
   orderBy, 
-  limit 
+  limit,
+  serverTimestamp
 } from "firebase/firestore";
 import { db } from "../config/firebase.js";
 
@@ -34,6 +35,11 @@ export class Player {
   // Create new player
   static async create(playerData) {
     try {
+      // Validate required fields
+      if (!playerData.name || !playerData.position) {
+        throw new Error('Name and position are required fields');
+      }
+      
       const playerId = playerData.name.toLowerCase().replace(/\s+/g, '-');
       
       const player = new Player({
@@ -43,6 +49,7 @@ export class Player {
         updatedAt: new Date()
       });
 
+      // Use serverTimestamp for consistency
       await setDoc(doc(db, COLLECTION_NAME, playerId), {
         name: player.name,
         position: player.position,
@@ -52,12 +59,14 @@ export class Player {
         points: player.points,
         gamesPlayed: player.gamesPlayed,
         isAvailable: player.isAvailable,
-        createdAt: player.createdAt,
-        updatedAt: player.updatedAt
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
 
+      console.log(`✅ Player created successfully: ${player.name}`);
       return player;
     } catch (error) {
+      console.error(`❌ Error creating player:`, error);
       throw new Error(`Error creating player: ${error.message}`);
     }
   }
@@ -65,14 +74,22 @@ export class Player {
   // Get all players
   static async findAll() {
     try {
+      console.log('🔍 Fetching all players...');
       const q = query(collection(db, COLLECTION_NAME), orderBy("rating", "desc"));
       const querySnapshot = await getDocs(q);
       
-      return querySnapshot.docs.map(doc => new Player({
+      const players = querySnapshot.docs.map(doc => new Player({
         id: doc.id,
         ...doc.data()
       }));
+      
+      console.log(`✅ Found ${players.length} players`);
+      return players;
     } catch (error) {
+      console.error(`❌ Error getting all players:`, error);
+      if (error.code === 'permission-denied') {
+        throw new Error('Permission denied: Check Firestore rules or authentication');
+      }
       throw new Error(`Error getting all players: ${error.message}`);
     }
   }

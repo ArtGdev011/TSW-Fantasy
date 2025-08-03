@@ -69,10 +69,12 @@ export const resetPlayerOwnership = () => {
   console.log('🔄 Player ownership reset');
 };
 
-export default {
+const teamUtils = {
   clearTeamData,
   clearUserSession,
   hasExistingTeam,
   getCurrentTeam,
   resetPlayerOwnership
 };
+
+export default teamUtils;

@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { teamAPI, playersAPI, Team, Player as APIPlayer } from '../services/api';
+import { teamAPI, Team, Player as APIPlayer } from '../services/api';
 import PlayerCard, { Player as CardPlayer } from './PlayerCard';
-import BudgetBar from './BudgetBar';
 import toast from 'react-hot-toast';
 import { 
   Trophy, 
@@ -36,11 +35,7 @@ const TeamPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<APIPlayer[]>([]);
 
-  useEffect(() => {
-    loadTeam();
-  }, []);
-
-  const loadTeam = async () => {
+  const loadTeam = useCallback(async () => {
     try {
       setLoading(true);
       const teamResponse = await teamAPI.get();
@@ -78,7 +73,11 @@ const TeamPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    loadTeam();
+  }, [loadTeam]);
 
   const getCaptainPlayer = (): APIPlayer | undefined => {
     return team?.captain;

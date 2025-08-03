@@ -1,12 +1,11 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const Team = require('../models/Team');
-const Player = require('../models/Player');
-const User = require('../models/User');
-const { authenticateSession, requireNoTeam, requireTeam, checkGameLock } = require('../middleware/auth');
-const { validateRequest, createTeamSchema, transferPlayerSchema, validateObjectId } = require('../middleware/validate');
-const { checkGameLockMiddleware } = require('../utils/gameLock');
-const { calculateTeamPoints } = require('../utils/scoring');
+import express from 'express';
+import TeamFirebase from '../models/TeamFirebase.js';
+import PlayerFirebase from '../models/PlayerFirebase.js';
+import User from '../models/User.js';
+import { authenticateToken, requireNoTeam, requireTeam, checkGameLock } from '../middleware/auth.js';
+import { validateRequest, createTeamSchema, transferPlayerSchema } from '../middleware/validate.js';
+import { checkGameLockMiddleware } from '../utils/gameLock.js';
+import { calculateTeamPoints } from '../utils/scoring.js';
 
 const router = express.Router();
 
@@ -27,17 +26,14 @@ const TRANSFER_COST_POINTS = parseInt(process.env.TRANSFER_COST_POINTS) || 4;
  * - Captain and vice-captain must be in the team
  */
 router.post('/create', 
-  authenticateSession, 
+  authenticateToken, 
   requireNoTeam, 
   validateRequest(createTeamSchema), 
   async (req, res) => {
     
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
   try {
     const { name, starters, subs, captain, viceCaptain } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.uid;
     
     // Combine all player IDs for validation
     const allPlayerIds = [...starters, ...subs];
@@ -65,11 +61,18 @@ router.post('/create',
         message: 'Captain and vice-captain must be different players.'
       });
     }
+
+    // Fetch all selected players using Firebase
+    const playerPromises = uniquePlayerIds.map(id => PlayerFirebase.findById(id));
+    const players = await Promise.all(playerPromises);
     
-    // Fetch all selected players
-    const players = await Player.find({ 
-      _id: { $in: uniquePlayerIds } 
-    }).session(session);
+    // Check if all players exist
+    if (players.some(player => !player)) {
+      return res.status(404).json({
+        error: 'Player not found',
+        message: 'One or more selected players do not exist.'
+      });
+    }
     
     if (players.length !== uniquePlayerIds.length) {
       return res.status(400).json({
@@ -88,8 +91,8 @@ router.post('/create',
     }
     
     // Validate formation
-    const starterPlayers = players.filter(p => starters.includes(p._id.toString()));
-    const subPlayers = players.filter(p => subs.includes(p._id.toString()));
+    const starterPlayers = players.filter(p => starters.includes(p.id));
+    const subPlayers = players.filter(p => subs.includes(p.id));
     
     // Count positions in starters
     const starterPositions = { GK: 0, CDM: 0, LW: 0, RW: 0 };
@@ -132,10 +135,10 @@ router.post('/create',
         message: `Total cost (€${totalCost}M) exceeds budget limit (€${BUDGET_LIMIT}M)`
       });
     }
-    
-    // Create team
-    const team = new Team({
-      user: userId,
+
+    // Create team using Firebase
+    const teamData = {
+      userId,
       name,
       players: uniquePlayerIds,
       starters,
@@ -144,57 +147,63 @@ router.post('/create',
       viceCaptain,
       budget: BUDGET_LIMIT - totalCost,
       teamValue: totalCost
-    });
+    };
     
-    await team.save({ session });
+    const team = await TeamFirebase.create(teamData);
     
-    // Update player ownership
-    await Player.updateMany(
-      { _id: { $in: uniquePlayerIds } },
-      { owner: team._id },
-      { session }
+    // Update player ownership using Firebase
+    const playerUpdatePromises = uniquePlayerIds.map(playerId => 
+      PlayerFirebase.setOwner(playerId, team.id)
     );
+    await Promise.all(playerUpdatePromises);
     
-    // Update user with team reference
-    await User.findByIdAndUpdate(
-      userId,
-      { team: team._id },
-      { session }
+    // Update user with team reference using Firebase
+    await User.updateUser(userId, { teamId: team.id });
+    
+    // Get populated team data for response
+    const populatedPlayers = await Promise.all(
+      uniquePlayerIds.map(id => PlayerFirebase.findById(id))
     );
+    const captainPlayer = await PlayerFirebase.findById(captain);
+    const viceCaptainPlayer = await PlayerFirebase.findById(viceCaptain);
     
-    await session.commitTransaction();
-    
-    // Populate team data for response
-    await team.populate([
-      { path: 'players', select: 'name position price overall' },
-      { path: 'captain', select: 'name position' },
-      { path: 'viceCaptain', select: 'name position' }
-    ]);
-    
-    console.log(`✅ Team created: ${name} by user ${req.user.username}`);
+    console.log(`✅ Team created: ${name} by user ${req.user.username || req.user.email}`);
     
     res.status(201).json({
       message: 'Team created successfully',
       team: {
-        id: team._id,
+        id: team.id,
         name: team.name,
         budget: team.budget,
         teamValue: team.teamValue,
         points: team.points,
-        players: team.players,
+        players: populatedPlayers.map(p => ({
+          id: p.id,
+          name: p.name,
+          position: p.position,
+          price: p.price,
+          overall: p.overall || p.rating
+        })),
         starters: team.starters,
         subs: team.subs,
-        captain: team.captain,
-        viceCaptain: team.viceCaptain,
+        captain: {
+          id: captainPlayer.id,
+          name: captainPlayer.name,
+          position: captainPlayer.position
+        },
+        viceCaptain: {
+          id: viceCaptainPlayer.id,
+          name: viceCaptainPlayer.name,
+          position: viceCaptainPlayer.position
+        },
         chips: team.chips
       }
     });
     
   } catch (error) {
-    await session.abortTransaction();
     console.error('❌ Team creation error:', error);
     
-    if (error.name === 'ValidationError') {
+    if (error.message.includes('required field')) {
       return res.status(400).json({
         error: 'Validation failed',
         message: error.message
@@ -205,8 +214,6 @@ router.post('/create',
       error: 'Team creation failed',
       message: 'Unable to create team. Please try again.'
     });
-  } finally {
-    session.endSession();
   }
 });
 
