@@ -18,6 +18,10 @@ const debugLog = {
       console.error('  • Full Error:', error);
     }
   },
+  warning: (msg: string, data?: any) => {
+    console.warn(`%c⚠️ AUTH WARNING: ${msg}`, 'color: #f59e0b; font-weight: bold;');
+    if (data) console.log('📊 Data:', data);
+  },
   info: (msg: string, data?: any) => {
     console.log(`%c📝 AUTH INFO: ${msg}`, 'color: #3b82f6; font-weight: bold;');
     if (data) console.log('📊 Data:', data);
@@ -144,8 +148,13 @@ export const signupWithUsername = async (username: string, email: string, passwo
     });
     debugLog.success("Firebase Auth profile updated", { displayName: username });
 
-    // Step 4d: Create user document in Firestore
     debugLog.step(5, "Creating user document in Firestore");
+    debugLog.info("About to write to Firestore", {
+      docPath: `users/${username.toLowerCase()}`,
+      userId: firebaseUser.uid,
+      email: email
+    });
+    
     const userData = {
       uid: firebaseUser.uid,
       username: username,
@@ -161,11 +170,32 @@ export const signupWithUsername = async (username: string, email: string, passwo
       hasTeam: false
     };
 
-    await setDoc(usernameRef, userData);
-    debugLog.success("User document created in Firestore", { 
-      docPath: `users/${username.toLowerCase()}`,
-      userData: { ...userData, createdAt: '[ServerTimestamp]', lastActive: '[ServerTimestamp]' }
-    });
+    try {
+      await setDoc(usernameRef, userData);
+      debugLog.success("User document created in Firestore", { 
+        docPath: `users/${username.toLowerCase()}`,
+        userData: { ...userData, createdAt: '[ServerTimestamp]', lastActive: '[ServerTimestamp]' }
+      });
+    } catch (firestoreError: any) {
+      debugLog.error("Firestore write failed", firestoreError);
+      debugLog.info("Firestore error details", {
+        code: firestoreError.code,
+        message: firestoreError.message,
+        authUser: firebaseUser.uid,
+        docPath: `users/${username.toLowerCase()}`
+      });
+      
+      // If Firestore fails, we should delete the Firebase Auth user to avoid orphaned accounts
+      debugLog.warning("Cleaning up Firebase Auth user due to Firestore failure");
+      try {
+        await firebaseUser.delete();
+        debugLog.info("Firebase Auth user deleted successfully");
+      } catch (deleteError: any) {
+        debugLog.error("Failed to delete Firebase Auth user", deleteError);
+      }
+      
+      throw firestoreError;
+    }
     console.log("✅ User document created in Firestore:", username);
 
     return {
