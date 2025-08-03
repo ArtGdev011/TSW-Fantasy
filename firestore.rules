@@ -1,11 +1,8 @@
-// TEMPORARY DEBUG RULES - ALLOW ALL ACCESS FOR TESTING
-// ⚠️ REPLACE WITH SECURE RULES AFTER DEBUGGING
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all operations for testing - TEMPORARY
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null && request.time < timestamp.date(2025, 8, 9);
     }
   }
 }
