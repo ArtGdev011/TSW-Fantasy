@@ -5,7 +5,7 @@ import PlayerCard, { Player as CardPlayer } from './PlayerCard';
 import BudgetBar from './BudgetBar';
 import CaptainSelector from './CaptainSelector';
 import toast from 'react-hot-toast';
-import { Shield, Users, Target, CheckCircle, AlertCircle } from 'lucide-react';
+import { Shield, Users, Target, CheckCircle } from 'lucide-react';
 
 interface SelectedPlayers {
   gk: APIPlayer | null;

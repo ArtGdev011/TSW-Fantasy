@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../contexts/AuthContextFirebase';
+import { useAuth } from '../contexts/AuthContextLocal';
 import { XMarkIcon, ShieldCheckIcon, ClockIcon, TrophyIcon } from '@heroicons/react/24/outline';
 
 interface AuthModalProps {
@@ -50,14 +50,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       let success = false;
       
       if (isLogin) {
-        success = await login(formData.username, formData.password);
+        success = await login({
+          username: formData.username,
+          password: formData.password
+        });
       } else {
         if (!formData.username || !formData.password) {
           setErrors({ form: 'Username and password are required' });
           setIsLoading(false);
           return;
         }
-        success = await signup(formData.username, formData.password, formData.email || undefined);
+        success = await signup({
+          username: formData.username,
+          password: formData.password,
+          email: formData.email || ''
+        });
       }
 
       if (success) {

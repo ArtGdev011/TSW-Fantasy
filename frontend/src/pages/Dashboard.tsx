@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContextFirebase';
+import { useAuth } from '../contexts/AuthContextLocal';
 import api from '../services/api';
 import { Calendar, Users, Trophy, TrendingUp, Clock, Star } from 'lucide-react';
 import './Dashboard.css';

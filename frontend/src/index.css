@@ -1,16 +1,89 @@
 /* Tailwind CSS directives */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Base styles for TSW Fantasy League */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8fafc;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Button styles */
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #2563eb;
+}
+
+.btn-secondary {
+  background-color: #6b7280;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #4b5563;
+}
+
+/* Card styles */
+.card {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  padding: 1.5rem;
+}
+
+/* Container styles */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Text utilities */
+.text-center { text-align: center; }
+.text-xl { font-size: 1.25rem; }
+.text-2xl { font-size: 1.5rem; }
+.text-3xl { font-size: 1.875rem; }
+.font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+
+/* Spacing utilities */
+.mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+.mt-4 { margin-top: 1rem; }
+.mt-6 { margin-top: 1.5rem; }
+.p-4 { padding: 1rem; }
+.p-6 { padding: 1.5rem; }
 
 /* TSW Fantasy Premium Theme - Global Styles */
 @layer base {
   * {
     box-sizing: border-box;
   }
-  
-  html, body {
-    background-color: #0a0a0a; /* Replace with your tsw-black color value */
+
+  html,
+  body {
+    background-color: #0a0a0a;
+    /* Replace with your tsw-black color value */
     color: #ffffff;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -19,33 +92,41 @@
 
   /* Scrollbar styling for dark theme */
   ::-webkit-scrollbar {
-    width: 0.5rem; /* Tailwind w-2 is 0.5rem */
+    width: 0.5rem;
+    /* Tailwind w-2 is 0.5rem */
   }
-  
+
   ::-webkit-scrollbar-track {
-    background-color: #18181b; /* Replace with your tsw-dark color value */
+    background-color: #18181b;
+    /* Replace with your tsw-dark color value */
   }
-  
+
   ::-webkit-scrollbar-thumb {
-    background-color: #4b5563; /* Tailwind bg-gray-600 */
-    border-radius: 9999px;     /* Tailwind rounded-full */
+    background-color: #4b5563;
+    /* Tailwind bg-gray-600 */
+    border-radius: 9999px;
+    /* Tailwind rounded-full */
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
-    background-color: #6b7280; /* Tailwind bg-gray-500 */
+    background-color: #6b7280;
+    /* Tailwind bg-gray-500 */
   }
 
   /* Selection styling */
   ::selection {
-    background-color: rgba(59, 130, 246, 0.3); /* Replace with your tsw-blue color and 30% opacity */
+    background-color: rgba(59, 130, 246, 0.3);
+    /* Replace with your tsw-blue color and 30% opacity */
     color: #ffffff;
   }
 }
 
 @layer components {
+
   /* Premium button styles */
   .btn-primary {
-    background-image: linear-gradient(to right, #2563eb, #2563eb 50%, #2563eb 100%); /* Replace with your tsw-blue and blue-600 */
+    background-image: linear-gradient(to right, #2563eb, #2563eb 50%, #2563eb 100%);
+    /* Replace with your tsw-blue and blue-600 */
     color: #ffffff;
     font-weight: 600;
     padding-top: 0.75rem;
@@ -54,20 +135,24 @@
     padding-right: 1.5rem;
     border-radius: 1rem;
     transition: all 0.3s;
-    box-shadow: 0 10px 15px -3px rgba(59,130,246,0.1), 0 4px 6px -4px rgba(59,130,246,0.1);
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1), 0 4px 6px -4px rgba(59, 130, 246, 0.1);
     transform: scale(1);
   }
+
   .btn-primary:hover {
-    background-image: linear-gradient(to right, #2563eb, #1d4ed8); /* blue-600 to tsw-blue */
-    box-shadow: 0 20px 25px -5px rgba(59,130,246,0.2), 0 8px 10px -6px rgba(59,130,246,0.2);
+    background-image: linear-gradient(to right, #2563eb, #1d4ed8);
+    /* blue-600 to tsw-blue */
+    box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.2), 0 8px 10px -6px rgba(59, 130, 246, 0.2);
     transform: scale(1.05);
   }
+
   .btn-primary:active {
     transform: scale(0.95);
   }
 
   .btn-secondary {
-    background-color: #18181b; /* Replace with your tsw-dark color value */
+    background-color: #18181b;
+    /* Replace with your tsw-dark color value */
     color: #ffffff;
     font-weight: 600;
     padding-top: 0.75rem;
@@ -76,15 +161,20 @@
     padding-right: 1.5rem;
     border-radius: 1rem;
     transition: all 0.3s;
-    border: 1px solid #4b5563; /* Tailwind border-gray-600 */
+    border: 1px solid #4b5563;
+    /* Tailwind border-gray-600 */
   }
+
   .btn-secondary:hover {
-    background-color: #374151; /* Tailwind bg-gray-700 */
-    border-color: #6b7280; /* Tailwind border-gray-500 */
+    background-color: #374151;
+    /* Tailwind bg-gray-700 */
+    border-color: #6b7280;
+    /* Tailwind border-gray-500 */
   }
 
   .btn-danger {
-    background-image: linear-gradient(to right, #dc2626, #ff3b3b); /* from-red-600 to-tsw-red */
+    background-image: linear-gradient(to right, #dc2626, #ff3b3b);
+    /* from-red-600 to-tsw-red */
     color: #ffffff;
     font-weight: 600;
     padding-top: 0.75rem;
@@ -93,29 +183,38 @@
     padding-right: 1.5rem;
     border-radius: 1rem;
     transition: all 0.3s;
-    box-shadow: 0 10px 15px -3px rgba(220,38,38,0.1), 0 4px 6px -4px rgba(220,38,38,0.1);
+    box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.1), 0 4px 6px -4px rgba(220, 38, 38, 0.1);
     transform: scale(1);
   }
+
   .btn-danger:hover {
-    background-image: linear-gradient(to right, #ff3b3b, #dc2626); /* hover:from-tsw-red hover:to-red-600 */
-    box-shadow: 0 20px 25px -5px rgba(220,38,38,0.2), 0 8px 10px -6px rgba(220,38,38,0.2);
+    background-image: linear-gradient(to right, #ff3b3b, #dc2626);
+    /* hover:from-tsw-red hover:to-red-600 */
+    box-shadow: 0 20px 25px -5px rgba(220, 38, 38, 0.2), 0 8px 10px -6px rgba(220, 38, 38, 0.2);
     transform: scale(1.05);
   }
+
   .btn-danger:active {
     transform: scale(0.95);
   }
 
   /* Card styles */
   .card {
-    background-color: #18181b; /* Replace with your tsw-dark color value */
-    border: 1px solid #374151; /* Tailwind border-gray-700 */
-    border-radius: 1rem; /* Tailwind rounded-2xl is 1rem */
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); /* Tailwind shadow-lg */
+    background-color: #18181b;
+    /* Replace with your tsw-dark color value */
+    border: 1px solid #374151;
+    /* Tailwind border-gray-700 */
+    border-radius: 1rem;
+    /* Tailwind rounded-2xl is 1rem */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    /* Tailwind shadow-lg */
   }
 
   .card-hover:hover {
-    border-color: #4b5563; /* Tailwind border-gray-600 */
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.25), 0 8px 10px -6px rgba(0,0,0,0.25); /* Tailwind shadow-xl */
+    border-color: #4b5563;
+    /* Tailwind border-gray-600 */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25);
+    /* Tailwind shadow-xl */
     transition: all 0.3s;
   }
 
@@ -126,20 +225,28 @@
     padding-right: 1rem;
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
-    background-color: #18181b; /* Replace with your tsw-dark color value */
-    border: 1px solid #4b5563; /* Tailwind border-gray-600 */
-    border-radius: 0.75rem; /* Tailwind rounded-xl is 0.75rem */
+    background-color: #18181b;
+    /* Replace with your tsw-dark color value */
+    border: 1px solid #4b5563;
+    /* Tailwind border-gray-600 */
+    border-radius: 0.75rem;
+    /* Tailwind rounded-xl is 0.75rem */
     color: #ffffff;
     transition: all 0.2s;
     outline: none;
   }
+
   .input-primary::placeholder {
-    color: #9ca3af; /* Tailwind placeholder-gray-400 */
+    color: #9ca3af;
+    /* Tailwind placeholder-gray-400 */
     opacity: 1;
   }
+
   .input-primary:focus {
-    border-color: #2563eb; /* Replace with your tsw-blue color value */
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); /* focus:ring-2 focus:ring-tsw-blue/20 */
+    border-color: #2563eb;
+    /* Replace with your tsw-blue color value */
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    /* focus:ring-2 focus:ring-tsw-blue/20 */
     outline: none;
   }
 
@@ -181,6 +288,7 @@
 }
 
 @layer utilities {
+
   /* Premium animations */
   .animate-float {
     animation: float 3s ease-in-out infinite;
@@ -201,12 +309,21 @@
 
 /* Custom keyframes */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes slideUp {
@@ -214,6 +331,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -221,6 +339,11 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }

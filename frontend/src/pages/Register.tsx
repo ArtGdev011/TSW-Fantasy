@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContextFirebase';
+import { useAuth } from '../contexts/AuthContextLocal';
 import { User, Lock, Mail } from 'lucide-react';
 import './Auth.css';
 
@@ -103,11 +103,11 @@ const Register: React.FC = () => {
     try {
       debugLog.info("🔐 Attempting registration with AuthContext");
       
-      const success = await signup(
-        formData.username, 
-        formData.password, 
-        formData.email || undefined
-      );
+      const success = await signup({
+        username: formData.username,
+        password: formData.password,
+        email: formData.email || ''
+      });
       
       if (success) {
         debugLog.success("Registration successful", { username: formData.username });
